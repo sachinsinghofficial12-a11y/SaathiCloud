@@ -1,4 +1,6 @@
+
 Flask
-requests
 groq
 gunicorn
+python-dotenv
+requests

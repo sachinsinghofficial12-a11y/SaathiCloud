@@ -1,25 +1,41 @@
+import os
 from flask import Flask, request, jsonify
+import google.generativeai as genai
 
 app = Flask(__name__)
 
+# Aapki Gemini API Key yahan set kar di gayi hai
+GEMINI_API_KEY = "AQ.Ab8RN6JDq6Lshk4fdZaD6DP3Qc9RJ5K3PcUFHG9rTr1j4-OlfQ"
+genai.configure(api_key=GEMINI_API_KEY)
+
+# Gemini Model Setup
+model = genai.GenerativeModel("gemini-1.5-flash")
+
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"status": "Saathi Cloud Server is Running!"})
+    return jsonify({"status": "Saathi Cloud AI Server is Running!"})
 
 @app.route("/command", methods=["POST"])
 def handle_command():
     data = request.json
-    command = data.get("command", "").lower()
+    command = data.get("command", "")
     
-    print(f"Command mili: {command}")
-    
-    reply = "Done Sir."
-    if "hello" in command or "hi" in command:
-        reply = "Haan Aakash Sir, main sun rahi hoon. Boliye kya madad karu?"
-    elif "kaise ho" in command:
-        reply = "Main ekdum badhiya hoon sir, aap bataiye aap kaise hain?"
-    else:
-        reply = f"Aapne kaha: {command}. Ispar kaam chal raha hai!"
+    if not command:
+        return jsonify({"reply": "Kuch toh boliye Sir!"})
+
+    try:
+        # Prompt jisse Saathi ka Nature set hoga
+        system_prompt = (
+            "Aapka naam Saathi hai. Aap Aakash Sir ke personal, loyal aur highly intelligent AI assistant hain. "
+            "Aap HINGLISH mein jawab dete hain. Friendly, respectful aur smart tone rakhein. "
+            f"User ka message: {command}"
+        )
+        
+        response = model.generate_content(system_prompt)
+        reply = response.text.strip()
+        
+    except Exception as e:
+        reply = f"Error aa gaya Sir: {str(e)}"
 
     return jsonify({"reply": reply})
 

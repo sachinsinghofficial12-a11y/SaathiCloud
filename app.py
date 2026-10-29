@@ -4,12 +4,12 @@ import google.generativeai as genai
 
 app = Flask(__name__)
 
-# Aapki Gemini API Key yahan set kar di gayi hai
+# Aapki Gemini API Key
 GEMINI_API_KEY = "AQ.Ab8RN6JDq6Lshk4fdZaD6DP3Qc9RJ5K3PcUFHG9rTr1j4-OlfQ"
 genai.configure(api_key=GEMINI_API_KEY)
 
-# Gemini Model Setup
-model = genai.GenerativeModel("gemini-pro")
+# Latest Gemini Flash Model Setup
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 @app.route("/", methods=["GET"])
 def home():

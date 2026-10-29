@@ -5,7 +5,7 @@ from groq import Groq
 
 app = Flask(__name__)
 
-# Wahan se mili gsk_... wali key yahan daalein
+# Aapki Groq API key
 GROQ_API_KEY = "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"
 client = Groq(api_key=GROQ_API_KEY)
 
@@ -41,7 +41,7 @@ def handle_command():
                     "content": command,
                 }
             ],
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
         )
         reply = response.choices[0].message.content.strip()
     except Exception as e:

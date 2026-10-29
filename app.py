@@ -1,77 +1,156 @@
+
 import os
-from flask import Flask, request, jsonify
+import logging
+from dotenv import load_dotenv
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+from flask import Flask, request, jsonify
 from groq import Groq
 
+# Local .env file se environment variables load karein
+load_dotenv()
+
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 32 * 1024  # 32 KB request limit
 
-GROQ_API_KEY = "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"
-client = Groq(api_key=GROQ_API_KEY)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("saathi")
 
-def get_active_model():
-    """Groq API se currently supported active model fetch karta hai."""
-    try:
-        models = client.models.list()
-        model_ids = [m.id for m in models.data]
-        
-        # Priority order for text models
-        preferred = [
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant",
-            "llama-3.2-11b-vision-instruct",
-            "mixtral-8x7b-32768"
-        ]
-        
-        for p in preferred:
-            if p in model_ids:
-                return p
-                
-        return model_ids[0] if model_ids else "llama-3.1-8b-instant"
-    except Exception:
-        return "llama-3.1-8b-instant"
+# Secrets and configuration come from environment variables
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+ACTIVE_MODEL = os.getenv(
+    "GROQ_MODEL",
+    "llama-3.3-70b-versatile"
+)
 
-ACTIVE_MODEL = get_active_model()
-print(f"--> Selected Active Groq Model: {ACTIVE_MODEL}")
+client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-@app.route("/", methods=["GET"])
+SYSTEM_PROMPT = """
+Tum Saathi ho, Aakash Sir ke personal AI assistant.
+Friendly, respectful aur natural Hinglish mein jawab do.
+User se hamesha respect se baat karo.
+Seedha, useful aur accurate jawab do.
+Agar kisi baat ka pata nahi hai, toh saaf batao.
+Internet se live information check kiye bina use current
+ya verified hone ka claim mat karo.
+"""
+
+
+@app.get("/")
 def home():
-    return jsonify({"status": "Saathi Cloud AI Active!", "model": ACTIVE_MODEL})
+    return jsonify({
+        "app": "Saathi Cloud AI",
+        "status": "online",
+        "model": ACTIVE_MODEL
+    })
 
-@app.route("/command", methods=["POST"])
+
+@app.get("/health")
+def health():
+    return jsonify({"status": "ok"}), 200
+
+
+@app.post("/command")
 def handle_command():
-    data = request.json or {}
-    command = data.get("command", "").strip().lower()
+    data = request.get_json(silent=True)
+
+    if not isinstance(data, dict):
+        return jsonify({
+            "reply": "Sir, valid JSON request bhejiye."
+        }), 400
+
+    command = data.get("command", "")
+
+    if not isinstance(command, str):
+        return jsonify({
+            "reply": "Sir, command text format mein bhejiye."
+        }), 400
+
+    command = command.strip()
 
     if not command:
-        return jsonify({"reply": "Kuch toh boliye Sir!"})
+        return jsonify({
+            "reply": "Kuch toh boliye Sir!"
+        }), 400
 
-    # --- LOCAL SYSTEM HANDLERS ---
-    if any(w in command for w in ["time", "samay", "kitne baje"]):
-        return jsonify({"reply": f"Abhi samay {datetime.now().strftime('%I:%M %p')} ho raha hai Sir."})
+    if len(command) > 8000:
+        return jsonify({
+            "reply": "Sir, message kaafi lamba hai. Chhota message bhejiye."
+        }), 413
 
-    if any(w in command for w in ["date", "tareekh", "din", "aaj ki date"]):
-        return jsonify({"reply": f"Aaj ki tareekh {datetime.now().strftime('%d %B %Y')} hai Sir."})
+    normalized = command.casefold()
+    now = datetime.now(ZoneInfo("Asia/Kolkata"))
 
-    # --- GROQ AI BACKEND ---
+    # Local date and time handlers
+    time_phrases = [
+        "time", "samay", "kitne baje", "current time"
+    ]
+    date_phrases = [
+        "date", "tareekh", "aaj ki date",
+        "aaj ki tareekh", "today's date"
+    ]
+
+    if any(word in normalized for word in time_phrases):
+        return jsonify({
+            "reply": (
+                f"Abhi India mein {now.strftime('%I:%M %p')} "
+                f"ho rahe hain Sir."
+            )
+        })
+
+    if any(word in normalized for word in date_phrases):
+        return jsonify({
+            "reply": (
+                f"Aaj {now.strftime('%d %B %Y')} hai Sir."
+            )
+        })
+
+    if client is None:
+        logger.error("GROQ_API_KEY is not configured.")
+        return jsonify({
+            "reply": (
+                "Sir, AI service ki API key configure nahi hai. "
+                "Server settings check karni hongi."
+            )
+        }), 503
+
     try:
         response = client.chat.completions.create(
+            model=ACTIVE_MODEL,
             messages=[
                 {
                     "role": "system",
-                    "content": "Tum Saathi ho — Aakash Sir ke personal, extremely loyal, ultra-smart AI assistant. Hamesha friendly, respectful aur short Hinglish mein jawab do."
+                    "content": SYSTEM_PROMPT
                 },
                 {
                     "role": "user",
-                    "content": command,
+                    "content": command
                 }
             ],
-            model=ACTIVE_MODEL,
+            temperature=0.7,
+            max_completion_tokens=800
         )
-        reply = response.choices[0].message.content.strip()
-    except Exception as e:
-        reply = f"Error aa gaya Sir: {str(e)}"
 
-    return jsonify({"reply": reply})
+        reply = response.choices[0].message.content
+
+        if not reply:
+            reply = "Sir, is baar jawab generate nahi ho paya."
+
+        return jsonify({"reply": reply.strip()})
+
+    except Exception as e:
+        # Detailed error server logs mein rahega
+        logger.exception("Groq request failed: %s", type(e).__name__)
+
+        return jsonify({
+            "reply": (
+                "Sir, AI service se response nahi mil paya. "
+                "API key, model ID aur server logs check karein."
+            )
+        }), 502
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)

@@ -9,7 +9,7 @@ GEMINI_API_KEY = "AQ.Ab8RN6JDq6Lshk4fdZaD6DP3Qc9RJ5K3PcUFHG9rTr1j4-OlfQ"
 genai.configure(api_key=GEMINI_API_KEY)
 
 # Gemini Model Setup
-model = genai.GenerativeModel("gemini-1.5-flash")
+model = genai.GenerativeModel("gemini-pro")
 
 @app.route("/", methods=["GET"])
 def home():

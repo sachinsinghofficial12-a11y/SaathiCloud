@@ -1,5 +1,4 @@
 Flask
-google-generativeai
 requests
-beautifulsoup4
+groq
 gunicorn

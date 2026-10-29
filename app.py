@@ -41,7 +41,7 @@ def handle_command():
                     "content": command,
                 }
             ],
-            model="llama3-8b-8192",
+            model="llama3-70b-8192",
         )
         reply = response.choices[0].message.content.strip()
     except Exception as e:

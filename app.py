@@ -5,13 +5,37 @@ from groq import Groq
 
 app = Flask(__name__)
 
-# Aapki Groq API key
 GROQ_API_KEY = "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"
 client = Groq(api_key=GROQ_API_KEY)
 
+def get_active_model():
+    """Groq API se currently supported active model fetch karta hai."""
+    try:
+        models = client.models.list()
+        model_ids = [m.id for m in models.data]
+        
+        # Priority order for text models
+        preferred = [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "llama-3.2-11b-vision-instruct",
+            "mixtral-8x7b-32768"
+        ]
+        
+        for p in preferred:
+            if p in model_ids:
+                return p
+                
+        return model_ids[0] if model_ids else "llama-3.1-8b-instant"
+    except Exception:
+        return "llama-3.1-8b-instant"
+
+ACTIVE_MODEL = get_active_model()
+print(f"--> Selected Active Groq Model: {ACTIVE_MODEL}")
+
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"status": "Saathi Cloud AI Active!"})
+    return jsonify({"status": "Saathi Cloud AI Active!", "model": ACTIVE_MODEL})
 
 @app.route("/command", methods=["POST"])
 def handle_command():
@@ -41,7 +65,7 @@ def handle_command():
                     "content": command,
                 }
             ],
-            model="llama3-70b-8192",
+            model=ACTIVE_MODEL,
         )
         reply = response.choices[0].message.content.strip()
     except Exception as e:

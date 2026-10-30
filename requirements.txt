@@ -6,3 +6,5 @@ requests
 beautifulsoup4
 ddgs
 tzdata
+Flask-SQLAlchemy
+psycopg[binary]

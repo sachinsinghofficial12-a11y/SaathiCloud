@@ -1,7 +1,6 @@
+
 Flask
 groq
 gunicorn
 python-dotenv
 requests
-tavily-python
-beautifulsoup4

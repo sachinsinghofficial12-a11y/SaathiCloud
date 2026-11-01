@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#10131c">
+<title>Saathi Cloud AI</title>
+
+<style>
+:root {
+    --bg: #10131c;
+    --panel: #191e2a;
+    --text: #f4f5fa;
+    --muted: #929bad;
+    --accent: #8b7cff;
+    --border: #2a3040;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: Arial, sans-serif; min-height: 100vh;
+}
+.app {
+    max-width: 1000px; margin: auto; min-height: 100vh;
+    display: flex; flex-direction: column; padding: 18px;
+}
+header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 4px 20px; border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.logo {
+    width: 45px; height: 45px; border-radius: 15px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, #8b7cff, #40c7dc); font-size: 24px;
+}
+h1 { font-size: 21px; margin: 0; }
+.status { font-size: 12px; color: #57d69a; margin-top: 5px; }
+#statusText { color: var(--muted); font-size: 13px; }
+.welcome { text-align: center; margin: 55px 0 25px; }
+.welcome h2 { font-size: 27px; margin-bottom: 10px; }
+.welcome p { color: var(--muted); line-height: 1.6; }
+.voice-area { display: flex; justify-content: center; margin: 25px 0; }
+.mic {
+    width: 82px; height: 82px; border: none; border-radius: 50%;
+    background: linear-gradient(135deg, #8b7cff, #4c9dff);
+    color: white; font-size: 30px; cursor: pointer;
+    box-shadow: 0 0 35px #7665ff55;
+}
+.mic.listening { animation: pulse 1.3s infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 18px #8b7cff20; } }
+#messages { flex: 1; min-height: 220px; padding: 15px 0; }
+.message {
+    max-width: 85%; padding: 13px 16px; border-radius: 16px;
+    margin: 12px 0; line-height: 1.6; white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.user { margin-left: auto; background: #5147a9; }
+.assistant {
+    margin-right: auto; background: var(--panel);
+    border: 1px solid var(--border); white-space: normal;
+}
+.assistant h1, .assistant h2, .assistant h3 {
+    margin: 14px 0 8px; line-height: 1.35;
+}
+.assistant p { margin: 8px 0; }
+.assistant ul, .assistant ol { padding-left: 24px; margin: 8px 0; }
+.assistant li { margin: 5px 0; }
+.assistant a {
+    color: #aebaff; text-decoration: underline; overflow-wrap: anywhere;
+}
+.assistant table {
+    width: 100%; border-collapse: collapse; display: block;
+    overflow-x: auto; margin: 12px 0;
+}
+.assistant th, .assistant td {
+    border: 1px solid var(--border); padding: 9px; text-align: left;
+}
+.assistant th { background: #252c3d; }
+.assistant blockquote {
+    border-left: 3px solid var(--accent); padding-left: 12px;
+    color: var(--muted); margin-left: 0;
+}
+.assistant pre {
+    background: #10131c; padding: 12px; border-radius: 8px; overflow-x: auto;
+}
+.assistant code {
+    background: #10131c; padding: 2px 5px; border-radius: 4px;
+}
+.assistant pre code { padding: 0; }
+.composer {
+    display: flex; gap: 9px; padding: 12px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 18px;
+    position: sticky; bottom: 10px;
+}
+input {
+    flex: 1; min-width: 0; background: transparent; border: none;
+    outline: none; color: white; font-size: 16px;
+}
+button { font-family: inherit; }
+.send {
+    border: none; border-radius: 12px; padding: 12px 17px;
+    background: var(--accent); color: white; cursor: pointer;
+}
+.controls { display: flex; justify-content: center; gap: 20px; margin: 14px 0; }
+.control { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 13px; }
+.note { text-align: center; color: var(--muted); font-size: 11px; padding: 12px; }
+@media(max-width: 600px) {
+    .app { padding: 12px; }
+    .welcome { margin-top: 35px; }
+    .welcome h2 { font-size: 23px; }
+    .message { max-width: 92%; }
+    .assistant table { font-size: 13px; }
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+<header>
+    <div class="brand">
+        <div class="logo">✦</div>
+        <div>
+            <h1>Saathi Cloud AI</h1>
+            <div class="status">● Your personal AI companion</div>
+        </div>
+    </div>
+    <div id="statusText">Ready</div>
+</header>
+
+<section class="welcome">
+    <h2>Namaste Sachin Sir! 👋</h2>
+    <p>Main aapka Saathi hoon.<br>Boliye, aaj kya baat karni hai?</p>
+</section>
+
+<section class="workspace" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0 18px;">
+  <button class="control" id="notesOpen" style="background:#242b3b;padding:12px;border-radius:12px;">📝 Notes</button>
+  <button class="control" id="tasksOpen" style="background:#242b3b;padding:12px;border-radius:12px;">✅ Tasks</button>
+  <button class="control" id="memoryOpen" style="background:#242b3b;padding:12px;border-radius:12px;">🧠 Memory</button>
+  <button class="control" id="modelOpen" style="background:#242b3b;padding:12px;border-radius:12px;">⚙️ Model</button>
+  <label class="control" style="background:#242b3b;padding:12px;border-radius:12px;cursor:pointer;">📎 Upload file<input id="fileUpload" type="file" accept=".txt,.md,.csv,.pdf,.docx,.xlsx" style="display:none"></label>
+</section>
+
+<section id="workspacePanel" style="display:none;background:#191e2a;border:1px solid #2a3040;border-radius:14px;padding:14px;margin-bottom:14px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">
+    <strong id="workspaceTitle">Workspace</strong><button class="control" id="workspaceClose">✕ Close</button>
+  </div>
+  <div id="workspaceContent" style="margin-top:12px;"></div>
+</section>
+
+<div class="voice-area">
+    <button class="mic" id="micButton" title="Start voice">🎙️</button>
+</div>
+<div id="voiceHint" class="note">Mic dabakar boliye ya “Oye Saathi” kahiye.</div>
+
+<main id="messages">
+    <div class="message assistant">Haan Sachin Sir! Main yahin hoon. 😊
+Aap mujhse kuch bhi pooch sakte hain.</div>
+</main>
+
+<div class="composer">
+    <input id="messageInput" type="text" placeholder="Saathi se kuch kahiye..." autocomplete="off">
+    <button class="send" id="sendButton">Send</button>
+</div>
+
+<div class="controls">
+    <button class="control" id="voiceToggle">🔊 Voice replies: ON</button>
+    <button class="control" id="stopButton">■ Stop voice</button>
+</div>
+<div class="note">Saathi Cloud AI · Private personal assistant</div>
+</div>
+
+<!-- Markdown renderer and HTML sanitizer. Keep these before the main script. -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
+
+<script>
+const messages = document.getElementById("messages");
+const input = document.getElementById("messageInput");
+const micButton = document.getElementById("micButton");
+const statusText = document.getElementById("statusText");
+const voiceHint = document.getElementById("voiceHint");
+const voiceToggle = document.getElementById("voiceToggle");
+
+let conversationId = localStorage.getItem("saathi_conversation") || null;
+let voiceEnabled = true;
+let recognition = null;
+let wakeWordActive = false;
+let listening = false;
+let busy = false;
+let availableVoices = [];
+
+function loadVoices() {
+    if (!("speechSynthesis" in window)) return;
+    availableVoices = speechSynthesis.getVoices();
+}
+loadVoices();
+if ("speechSynthesis" in window) {
+    speechSynthesis.onvoiceschanged = loadVoices;
+}
+
+/* Render assistant Markdown safely; keep user messages as plain text. */
+function addMessage(text, type) {
+    const div = document.createElement("div");
+    div.className = "message " + type;
+
+    if (type === "assistant" && window.marked && window.DOMPurify) {
+        const html = window.marked.parse(String(text), {
+            breaks: true,
+            gfm: true
+        });
+        div.innerHTML = window.DOMPurify.sanitize(html, {
+            USE_PROFILES: { html: true }
+        });
+    } else {
+        div.textContent = text;
+    }
+
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function chooseVoice(text) {
+    const hasDevanagari = /[\u0900-\u097F]/.test(text);
+    const isMostlyEnglish = !hasDevanagari &&
+        /^[\x00-\x7F\s\d.,!?'"():;\-]+$/.test(text) &&
+        /\b(the|this|that|what|where|when|how|your|you|are|is|was|will|can|please|hello|thanks)\b/i.test(text);
+
+    const preferred = isMostlyEnglish
+        ? ["en-IN", "en-GB", "en-US"]
+        : ["hi-IN", "hi"];
+
+    for (const lang of preferred) {
+        const voice = availableVoices.find(v => v.lang.toLowerCase() === lang.toLowerCase());
+        if (voice) return voice;
+    }
+
+    if (!isMostlyEnglish) {
+        const hindiVoice = availableVoices.find(v => v.lang.toLowerCase().startsWith("hi"));
+        if (hindiVoice) return hindiVoice;
+    }
+
+    const indianEnglish = availableVoices.find(v => v.lang.toLowerCase() === "en-in");
+    return indianEnglish || availableVoices[0] || null;
+}
+
+/* Convert Markdown/formatting into plain text before browser voice playback. */
+function makeSpeechText(markdown) {
+    let text = String(markdown ?? "");
+
+    // Omit code blocks rather than having the voice read source code or symbols.
+    text = text.replace(/```[\s\S]*?```/g, " Code block omitted. ");
+    text = text.replace(/`([^`]*)`/g, "$1");
+
+    // Keep link labels, discard image/link destinations and raw URLs.
+    text = text.replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1");
+    text = text.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+    text = text.replace(/https?:\/\/[^\s)]+/gi, " ");
+
+    // Remove Markdown heading, quote, list and numbered-list markers.
+    text = text.replace(/^\s{0,3}#{1,6}\s*/gm, "");
+    text = text.replace(/^\s{0,3}>\s?/gm, "");
+    text = text.replace(/^\s*[-*+]\s+/gm, "");
+    text = text.replace(/^\s*\d+[.)]\s+/gm, "");
+
+    // Remove Markdown emphasis/strike/table characters, including stray hashes.
+    text = text.replace(/[*_~#|]/g, " ");
+    text = text.replace(/<\/?[^>]+>/g, " ");
+    text = text.replace(/&(?:nbsp|amp|lt|gt|quot|#39);/gi, " ");
+
+    // Remove common formatting-only separators and tidy whitespace.
+    text = text.replace(/^\s*[-=]{3,}\s*$/gm, " ");
+    text = text.replace(/[ \t]+/g, " ");
+    text = text.replace(/\s*\n\s*/g, ". ");
+    text = text.replace(/(?:\.\s*){2,}/g, ". ");
+    return text.trim();
+}
+
+function speak(text) {
+    if (!voiceEnabled || !("speechSynthesis" in window) || !text) return;
+
+    // Clean inside speak() too, so every voice call is protected.
+    const cleanText = makeSpeechText(text);
+    if (!cleanText) return;
+
+    speechSynthesis.cancel();
+    if (!availableVoices.length) loadVoices();
+
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    const hasDevanagari = /[\u0900-\u097F]/.test(cleanText);
+    const voice = chooseVoice(cleanText);
+
+    utterance.lang = voice ? voice.lang : (hasDevanagari ? "hi-IN" : "en-IN");
+    if (voice) utterance.voice = voice;
+    utterance.rate = 0.88;
+    utterance.pitch = 1.0;
+    utterance.volume = 1;
+
+    utterance.onerror = event => {
+        console.warn("Speech playback issue:", event.error);
+        statusText.textContent = "Voice playback issue";
+    };
+    speechSynthesis.speak(utterance);
+}
+
+async function sendMessage(message) {
+    message = message.trim();
+    if (!message || busy) return;
+
+    busy = true;
+    addMessage(message, "user");
+    input.value = "";
+    statusText.textContent = "Saathi is thinking...";
+
+    try {
+        const response = await fetch("/web-command", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                command: message,
+                conversation_id: conversationId
+            })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Request failed");
+
+        conversationId = data.conversation_id || conversationId;
+        if (conversationId) localStorage.setItem("saathi_conversation", conversationId);
+
+        const reply = data.reply || "Maaf kijiye, response nahi mila.";
+        addMessage(reply, "assistant");
+        speak(reply);
+        statusText.textContent = "Online";
+    } catch (error) {
+        console.error(error);
+        addMessage("Connection mein dikkat aa rahi hai. Backend integration check karna hoga.", "assistant");
+        statusText.textContent = "Connection issue";
+    } finally {
+        busy = false;
+    }
+}
+
+document.getElementById("sendButton").addEventListener("click", () => sendMessage(input.value));
+input.addEventListener("keydown", event => {
+    if (event.key === "Enter") sendMessage(input.value);
+});
+
+voiceToggle.addEventListener("click", () => {
+    voiceEnabled = !voiceEnabled;
+    voiceToggle.textContent = voiceEnabled ? "🔊 Voice replies: ON" : "🔇 Voice replies: OFF";
+    if (!voiceEnabled && "speechSynthesis" in window) speechSynthesis.cancel();
+});
+
+document.getElementById("stopButton").addEventListener("click", () => {
+    if ("speechSynthesis" in window) speechSynthesis.cancel();
+});
+
+function startListening() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        statusText.textContent = "Voice unavailable";
+        voiceHint.textContent = "Is browser mein speech recognition support nahi hai. Chrome try karein.";
+        return;
+    }
+
+    if (recognition) {
+        try { recognition.stop(); } catch (e) {}
+    }
+
+    recognition = new SpeechRecognition();
+    recognition.lang = "hi-IN";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+        listening = true;
+        micButton.classList.add("listening");
+        statusText.textContent = "Listening...";
+        voiceHint.textContent = '“Oye Saathi” bolkar mujhe bulaiye.';
+    };
+
+    recognition.onresult = event => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (!event.results[i].isFinal) continue;
+
+            const transcript = event.results[i][0].transcript.trim();
+            const wakePattern = /(oye saathi|ओए साथी|ओय साथी)/i;
+            const match = transcript.match(wakePattern);
+
+            if (match) {
+                const command = transcript.replace(wakePattern, "").trim();
+                wakeWordActive = true;
+
+                if (command) {
+                    wakeWordActive = false;
+                    recognition.stop();
+                    sendMessage(command);
+                } else {
+                    statusText.textContent = "Saathi activated";
+                    voiceHint.textContent = "Haan Sachin Sir, boliye! Main sun raha hoon.";
+                    speak("हाँ सचिन सर, बोलिए! मैं सुन रहा हूँ।");
+                }
+            } else if (wakeWordActive && !busy) {
+                wakeWordActive = false;
+                recognition.stop();
+                sendMessage(transcript);
+            }
+        }
+    };
+
+    recognition.onerror = event => {
+        statusText.textContent = "Mic: " + event.error;
+    };
+
+    recognition.onend = () => {
+        listening = false;
+        micButton.classList.remove("listening");
+        if (!busy) statusText.textContent = "Ready";
+    };
+
+    try {
+        recognition.start();
+    } catch (error) {
+        statusText.textContent = "Mic could not start";
+    }
+}
+
+micButton.addEventListener("click", () => {
+    if (listening && recognition) recognition.stop();
+    else startListening();
+});
+
+// Workspace panels: persistent server-side notes, tasks, memories and model choice.
+const workspacePanel = document.getElementById("workspacePanel");
+const workspaceContent = document.getElementById("workspaceContent");
+const workspaceTitle = document.getElementById("workspaceTitle");
+
+async function api(path, options={}) {
+  const r = await fetch(path, {
+    headers: {"Content-Type":"application/json", ...(options.headers||{})},
+    ...options
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || "Request failed");
+  return d;
+}
+
+function showPanel(title, html) {
+  workspaceTitle.textContent = title;
+  workspaceContent.innerHTML = html;
+  workspacePanel.style.display = "block";
+  workspacePanel.scrollIntoView({behavior:"smooth",block:"nearest"});
+}
+
+document.getElementById("workspaceClose").onclick = () => workspacePanel.style.display = "none";
+
+document.getElementById("notesOpen").onclick = async () => {
+  try {
+    const d = await api("/api/notes");
+    showPanel("📝 Notes", `<input id="noteTitle" placeholder="Note title" maxlength="200" style="width:100%;padding:10px;margin:6px 0;background:#10131c;color:white;border:1px solid #384056;border-radius:8px"><textarea id="noteBody" placeholder="Write your note..." style="width:100%;min-height:90px;padding:10px;background:#10131c;color:white;border:1px solid #384056;border-radius:8px"></textarea><button id="saveNote" class="send">Save note</button><div id="noteList" style="margin-top:12px"></div>`);
+    const list = document.getElementById("noteList");
+    if (!d.notes.length) list.textContent = "Abhi koi note saved nahi hai.";
+
+    d.notes.forEach(n => {
+      const row = document.createElement("div");
+      row.style.cssText = "padding:12px;margin:8px 0;border:1px solid #303747;border-radius:10px;display:flex;gap:12px;justify-content:space-between;align-items:flex-start";
+      const body = document.createElement("div");
+      body.style.cssText = "min-width:0;white-space:pre-wrap;overflow-wrap:anywhere";
+      const heading = document.createElement("strong");
+      heading.textContent = n.title;
+      const content = document.createElement("div");
+      content.textContent = n.content;
+      content.style.marginTop = "5px";
+      body.append(heading, content);
+
+      const del = document.createElement("button");
+      del.textContent = "Delete";
+      del.className = "send";
+      del.style.background = "#9b3d4a";
+      del.onclick = async () => {
+        if (confirm("Is note ko delete karna hai?")) {
+          try {
+            await api("/api/notes/" + n.id, {method:"DELETE"});
+            document.getElementById("notesOpen").click();
+          } catch (e) { alert(e.message); }
+        }
+      };
+      row.append(body, del);
+      list.appendChild(row);
+    });
+
+    document.getElementById("saveNote").onclick = async () => {
+      const title = document.getElementById("noteTitle").value.trim();
+      const content = document.getElementById("noteBody").value.trim();
+      if (!title || !content) {
+        alert("Note title aur content dono likhiye.");
+        return;
+      }
+      try {
+        await api("/api/notes", {method:"POST",body:JSON.stringify({title,content})});
+        document.getElementById("notesOpen").click();
+      } catch(e) { alert(e.message); }
+    };
+  } catch(e) { alert(e.message); }
+};
+
+document.getElementById("tasksOpen").onclick = async () => {
+  try {
+    const d = await api("/api/tasks");
+    showPanel("✅ Tasks", `<input id="taskTitle" placeholder="Task name (required)" maxlength="200" style="width:100%;padding:10px;margin:6px 0;background:#10131c;color:white;border:1px solid #384056;border-radius:8px"><textarea id="taskDetails" placeholder="Details (optional)" style="width:100%;min-height:65px;padding:10px;margin:5px 0;background:#10131c;color:white;border:1px solid #384056;border-radius:8px"></textarea><label style="display:block;margin:6px 0;color:#aab3c5">Due date (optional) <input id="taskDue" type="date" style="padding:8px;background:#10131c;color:white;border:1px solid #384056;border-radius:8px"></label><button id="addTask" class="send">Add task</button><div id="taskList" style="margin-top:12px"></div>`);
+    const list = document.getElementById("taskList");
+    if (!d.tasks.length) list.textContent = "Abhi koi task nahi hai.";
+
+    d.tasks.forEach(t => {
+      const row = document.createElement("div");
+      row.style.cssText = "padding:10px;border-bottom:1px solid #303747;display:flex;gap:10px;align-items:flex-start;justify-content:space-between";
+      const left = document.createElement("div");
+      left.style.cssText = "display:flex;gap:8px;align-items:flex-start;min-width:0";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = t.completed;
+      cb.onchange = async () => {
+        try {
+          await api("/api/tasks/" + t.id, {method:"PATCH",body:JSON.stringify({completed:cb.checked})});
+        } catch(e) {
+          alert(e.message);
+          cb.checked = !cb.checked;
+        }
+      };
+
+      const info = document.createElement("div");
+      info.style.cssText = "overflow-wrap:anywhere";
+      const title = document.createElement("div");
+      title.textContent = t.title;
+      if (t.completed) title.style.textDecoration = "line-through";
+      info.appendChild(title);
+
+      if (t.details) {
+        const desc = document.createElement("small");
+        desc.textContent = t.details;
+        desc.style.cssText = "display:block;color:#aab3c5;margin-top:4px";
+        info.appendChild(desc);
+      }
+      if (t.due_at) {
+        const due = document.createElement("small");
+        due.textContent = "Due: " + t.due_at;
+        due.style.cssText = "display:block;color:#aab3c5;margin-top:4px";
+        info.appendChild(due);
+      }
+      left.append(cb, info);
+
+      const del = document.createElement("button");
+      del.textContent = "Delete";
+      del.className = "send";
+      del.style.background = "#9b3d4a";
+      del.onclick = async () => {
+        if (confirm("Is task ko delete karna hai?")) {
+          try {
+            await api("/api/tasks/" + t.id, {method:"DELETE"});
+            document.getElementById("tasksOpen").click();
+          } catch(e) { alert(e.message); }
+        }
+      };
+      row.append(left, del);
+      list.appendChild(row);
+    });
+
+    document.getElementById("addTask").onclick = async () => {
+      const title = document.getElementById("taskTitle").value.trim();
+      if (!title) {
+        alert("Task ka naam likhna zaroori hai.");
+        document.getElementById("taskTitle").focus();
+        return;
+      }
+      try {
+        await api("/api/tasks", {
+          method:"POST",
+          body:JSON.stringify({
+            title,
+            details:document.getElementById("taskDetails").value.trim(),
+            due_at:document.getElementById("taskDue").value
+          })
+        });
+        document.getElementById("tasksOpen").click();
+      } catch(e) { alert(e.message); }
+    };
+  } catch(e) { alert(e.message); }
+};
+
+document.getElementById("memoryOpen").onclick = async () => {
+  try {
+    const d = await api("/api/memory");
+    const html = d.memories.map(m =>
+      `<div style="padding:8px;border-bottom:1px solid #303747">${escapeHtml(m.value)}</div>`
+    ).join("") || "Abhi koi saved memory nahi hai.";
+    showPanel("🧠 Saved Memory", html);
+  } catch(e) { alert(e.message); }
+};
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  }[c]));
+}
+
+document.getElementById("modelOpen").onclick = async () => {
+  try {
+    const d = await api("/api/settings");
+    showPanel("⚙️ AI Model", `<p>Provider: ${escapeHtml(d.provider)}</p><select id="modelSelect" style="width:100%;padding:10px;background:#10131c;color:white;border:1px solid #384056;border-radius:8px">${d.available_models.map(m => `<option value="${escapeHtml(m)}" ${m===d.active_model?"selected":""}>${escapeHtml(m)}</option>`).join("")}</select><button id="saveModel" class="send" style="margin-top:10px">Apply model</button>`);
+    document.getElementById("saveModel").onclick = async () => {
+      try {
+        const model = document.getElementById("modelSelect").value;
+        await api("/api/settings/model", {method:"POST",body:JSON.stringify({model})});
+        alert("Model updated: " + model);
+      } catch(e) { alert(e.message); }
+    };
+  } catch(e) { alert(e.message); }
+};
+
+document.getElementById("fileUpload").onchange = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  const form = new FormData();
+  form.append("file", file);
+  statusText.textContent = "Reading file...";
+  try {
+    const r = await fetch("/api/upload", {method:"POST",body:form});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || "Upload failed");
+    input.value = `Please analyse this file (${d.filename}) and answer my question:\n\n${d.text}\n\n`;
+    input.focus();
+    statusText.textContent = "File ready — add your question";
+  } catch(e) {
+    alert(e.message);
+    statusText.textContent = "Upload failed";
+  }
+  event.target.value = "";
+};
+</script>
+</body>
+</html>

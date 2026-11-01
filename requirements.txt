@@ -1,4 +1,3 @@
-
 Flask
 groq
 gunicorn
@@ -9,3 +8,6 @@ ddgs
 tzdata
 Flask-SQLAlchemy
 psycopg[binary]
+pypdf
+python-docx
+openpyxl

@@ -1,0 +1,113 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saathi AI - Login</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #080d18;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .login-box {
+            width: 100%;
+            max-width: 390px;
+            padding: 35px 28px;
+            border: 1px solid #26344c;
+            border-radius: 18px;
+            background: #111a2b;
+            text-align: center;
+        }
+        .logo { font-size: 42px; margin-bottom: 10px; }
+        h1 { margin: 8px 0; font-size: 28px; }
+        p { color: #9eabc0; margin-bottom: 25px; }
+        input {
+            width: 100%;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #34445f;
+            border-radius: 10px;
+            background: #080f1e;
+            color: white;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            border: 0;
+            border-radius: 10px;
+            background: #477cf5;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        button:disabled { opacity: .6; }
+        #message { color: #ff8585; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <div class="logo">🤖</div>
+        <h1>Saathi AI</h1>
+        <p>Your personal AI companion</p>
+
+        <form id="loginForm">
+            <input
+                type="password"
+                id="password"
+                placeholder="Enter your Saathi password"
+                required
+                autocomplete="current-password"
+            >
+            <button type="submit" id="loginButton">Login to Saathi</button>
+        </form>
+
+        <div id="message"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById("loginForm");
+        const message = document.getElementById("message");
+        const button = document.getElementById("loginButton");
+
+        form.addEventListener("submit", async function(event) {
+            event.preventDefault();
+            message.textContent = "";
+            button.disabled = true;
+            button.textContent = "Logging in...";
+
+            try {
+                const response = await fetch("/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        password: document.getElementById("password").value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || "Login failed.");
+                }
+
+                window.location.href = data.redirect || "/assistant";
+            } catch (error) {
+                message.textContent = error.message;
+                button.disabled = false;
+                button.textContent = "Login to Saathi";
+            }
+        });
+    </script>
+</body>
+</html>

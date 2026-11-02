@@ -340,6 +340,9 @@ def save_exchange(conversation_id, user_message, assistant_message):
             Message(conversation_id=conversation_id, role="user", content=user_message),
             Message(conversation_id=conversation_id, role="assistant", content=assistant_message)
         ])
+        conversation = db.session.get(Conversation, conversation_id)
+        if conversation:
+            conversation.updated_at = datetime.utcnow()
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -597,6 +600,52 @@ def command():
 @require_api_key
 def web_command():
     return process_ai_command(request.get_json(silent=True))
+
+
+# ---------------- Cloud conversation history APIs ----------------
+@app.get("/api/conversations")
+@require_api_key
+def list_conversations():
+    """List the authenticated owner's recent conversations for cross-device history."""
+    rows = Conversation.query.order_by(Conversation.updated_at.desc()).limit(100).all()
+    result = []
+    for row in rows:
+        first_user = Message.query.filter_by(conversation_id=row.id, role="user").order_by(Message.created_at.asc()).first()
+        count = Message.query.filter_by(conversation_id=row.id).count()
+        title = (first_user.content[:90].strip() if first_user else "New conversation")
+        result.append({
+            "id": row.id,
+            "title": title,
+            "updated_at": row.updated_at.isoformat() if row.updated_at else "",
+            "message_count": count,
+        })
+    return jsonify({"conversations": result})
+
+@app.get("/api/conversations/<conversation_id>")
+@require_api_key
+def get_conversation_detail(conversation_id):
+    try:
+        cid = str(uuid.UUID(conversation_id))
+    except (ValueError, TypeError, AttributeError):
+        return jsonify({"error": "Invalid conversation ID."}), 400
+    row = db.session.get(Conversation, cid)
+    if row is None:
+        return jsonify({"error": "Conversation not found."}), 404
+    messages = Message.query.filter_by(conversation_id=cid).order_by(Message.created_at.asc()).limit(500).all()
+    first_user = next((m for m in messages if m.role == "user"), None)
+    return jsonify({
+        "conversation": {
+            "id": row.id,
+            "title": first_user.content[:90].strip() if first_user else "New conversation",
+            "updated_at": row.updated_at.isoformat() if row.updated_at else "",
+            "message_count": len(messages),
+        },
+        "messages": [{
+            "role": m.role,
+            "content": m.content,
+            "created_at": m.created_at.isoformat() if m.created_at else "",
+        } for m in messages]
+    })
 
 
 # ---------------- Saathi workspace APIs ----------------
